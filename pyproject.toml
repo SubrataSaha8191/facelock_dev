@@ -1,0 +1,13 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "facelock"
+version = "1.0.0"
+description = "A lightweight developer API to interact with the FaceLock biometric daemon."
+readme = "README.md"
+requires-python = ">=3.7"
+authors = [
+    { name = "Subrata Saha" }
+]
