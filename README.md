@@ -38,3 +38,4 @@ if __name__ == "__main__":
 
 ## How it Works
 This library contains **zero ML or OpenCV dependencies**. It communicates over a lightweight UNIX Domain Socket (`/tmp/facelock.sock`) directly to the system-level `facelock.service` daemon. This means your Python applications stay blazingly fast and avoid "Device Busy" webcam errors.
+# facelock_dev
