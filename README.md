@@ -17,6 +17,7 @@ The SDK communicates locally with the FaceLock Authentication Service, providing
 - No direct camera access
 - Local UNIX Domain Socket communication
 - Simple and intuitive API
+- Works with the service's multi-angle face recognition (any enrolled head angle)
 - Cross-platform architecture
 
 ---
@@ -43,66 +44,78 @@ pip install git+https://github.com/SubrataSaha8191/facelock_dev.git
 import facelock
 
 try:
-
     if facelock.authenticate():
-
         print("Authentication successful.")
-
     else:
-
         print("Authentication failed.")
 
 except facelock.UserNotEnrolledError:
-
-    print("User is not enrolled.")
+    print("User is not enrolled (or needs to enroll again).")
 
 except facelock.FaceLockConnectionError:
-
     print("FaceLock Authentication Service is unavailable.")
 ```
+
+One call is normally enough. The service watches the camera for a few seconds and
+accepts any head angle the user enrolled, so don't wrap `authenticate()` in a retry loop.
 
 ---
 
 ## API
 
-### authenticate()
+### authenticate(user_id=None, timeout=None)
 
-Authenticate the current user.
+Authenticate a user with their face. `user_id` defaults to the current OS user.
 
-Returns
-
-```python
-bool
-```
+Returns `bool`
 
 Raises
 
-- FaceLockConnectionError
-- UserNotEnrolledError
+- `FaceLockConnectionError`
+- `UserNotEnrolledError`
 
 ---
 
-### is_enrolled()
+### authenticate_detailed(user_id=None, timeout=None)
 
-Check whether the current user is enrolled.
-
-Returns
+Same as `authenticate()`, but returns an `AuthResult` so you can tell the user *why*
+it failed. An `AuthResult` is truthy when authentication succeeded.
 
 ```python
-bool
+result = facelock.authenticate_detailed()
+if not result:
+    print(result.reason, result.message, result.score)
 ```
+
+`reason` is one of `match`, `mismatch`, `no_face`, `low_quality`, `liveness_failed`,
+`locked`, `camera_unavailable`.
+
+---
+
+### is_enrolled(user_id=None)
+
+Check whether the user has a usable face profile. Returns `bool`
+(`False` if the service is unreachable; use `is_available()` to tell the cases apart).
 
 ---
 
 ### is_available()
 
-Check whether the FaceLock Authentication Service is available.
+Check whether the FaceLock Authentication Service is reachable. Returns `bool`.
 
-Returns
+---
 
-```python
-bool
-```
+### Exceptions
+
+| Exception | Meaning |
+|---|---|
+| `FaceLockError` | Base class |
+| `FaceLockConnectionError` | Service unreachable (also a `ConnectionError`) |
+| `UserNotEnrolledError` | No usable face profile (also a `ValueError`) |
+| `AuthenticationFailedError` | For callers that prefer failure as an exception |
+
+The socket path can be overridden with the `FACELOCK_SOCKET` environment variable
+or the `socket_path=` argument.
 
 ---
 
@@ -163,16 +176,13 @@ MIT License
 
 ## FaceLock Ecosystem
 
-Since you're building both FaceLock and the SDK, I recommend documenting a simple repository architecture so contributors immediately understand how everything fits together:
-
 ```text
 FaceLock/
 │
-├── FaceLock Core
+├── Core (detection, recognition, liveness, storage)
 ├── Authentication Service
 ├── Dashboard
-├── Linux Integration
-├── Windows Integration
+├── Linux / Windows integration
 │
 └── exposes
         │
@@ -182,3 +192,10 @@ FaceLock SDK
         ▼
 Developer Applications
 ```
+
+## Changelog
+
+**1.1.0**: `is_available()`, `authenticate_detailed()` / `AuthResult`, custom exceptions
+(compatible with the 1.0 `ValueError` / `ConnectionError`), configurable socket path,
+reads long responses correctly, and a 30 s default timeout to cover the service's
+multi-frame unlock window.
