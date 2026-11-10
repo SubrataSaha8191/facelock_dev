@@ -19,6 +19,7 @@ if facelock.authenticate():
 - Detailed results (reason and score) so you can tell users *why* it failed
 - Clear exceptions for "service not running" and "not enrolled"
 - Standard library only, Python 3.8+
+- Works on Linux and Windows
 - Local UNIX Domain Socket communication; nothing leaves the machine
 
 ---
@@ -127,7 +128,9 @@ Whether the service is reachable.
 
 | Option | Default |
 |---|---|
-| Socket path | `/tmp/facelock.sock`, override with the `FACELOCK_SOCKET` environment variable or `socket_path=` |
+| Socket path | Linux: `/tmp/facelock.sock`. Windows: `auto` (read from `%LOCALAPPDATA%\FaceLock\endpoint.json`). Override with the `FACELOCK_SOCKET` environment variable or `socket_path=` |
+| Data folder | `FACELOCK_DATA_DIR` (where `endpoint.json` is looked up on Windows) |
+| Token | Read from `endpoint.json`; `FACELOCK_TOKEN` overrides it for `tcp://` addresses |
 | Timeout | 30 s (covers the service's multi-frame unlock window), override with `timeout=` |
 
 ---
@@ -166,7 +169,8 @@ Your application
       ▼
  FaceLock SDK
       │
- UNIX Domain Socket (/tmp/facelock.sock)
+ local socket: UNIX socket (Linux) or
+ loopback TCP + secret token (Windows)
       │
       ▼
 FaceLock service ──► camera ► detection ► recognition ► liveness ► decision
@@ -210,6 +214,10 @@ The tests start a fake daemon on a temporary UNIX socket, so they need neither t
 ---
 
 ## Changelog
+
+**1.2.0**
+- Windows support: the SDK connects over loopback TCP with the per-user token from `endpoint.json` when there is no UNIX socket
+- `is_available()` and the other calls report an unreachable service as `False` / `FaceLockConnectionError` on every platform
 
 **1.1.0**
 - Added `is_available()` and `authenticate_detailed()` / `AuthResult`

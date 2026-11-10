@@ -2,7 +2,10 @@
 
 import os
 
-DEFAULT_SOCKET_PATH = os.environ.get("FACELOCK_SOCKET", "/tmp/facelock.sock")
+from ._transport import default_address
+
+# "/tmp/facelock.sock" on POSIX; "auto" (loopback TCP + token from endpoint.json) on Windows.
+DEFAULT_SOCKET_PATH = default_address()
 
 # An unlock attempt watches the camera for a few seconds (the service default is 6 s,
 # configurable up to 20 s), plus camera start-up, so allow generous headroom.

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "facelock"
-version = "1.1.0"
+version = "1.2.0"
 description = "A lightweight developer API to interact with the FaceLock biometric daemon."
 readme = "README.md"
 requires-python = ">=3.8"

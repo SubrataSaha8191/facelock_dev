@@ -6,11 +6,11 @@ import socket
 from dataclasses import dataclass
 from typing import Any, Dict, Optional
 
+from . import _transport
 from .constants import (
     ACTION_AUTHENTICATE,
     ACTION_CHECK_ENROLLED,
     AVAILABILITY_TIMEOUT,
-    DEFAULT_SOCKET_PATH,
     REASON_NOT_ENROLLED,
     REASON_REENROLL,
     SOCKET_TIMEOUT,
@@ -42,12 +42,13 @@ def _send_request(
     timeout: float = SOCKET_TIMEOUT,
     **fields: Any,
 ) -> Dict[str, Any]:
-    path = socket_path or DEFAULT_SOCKET_PATH
     request = {"action": action, **fields}
+    address = socket_path or _transport.default_address()
     try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.settimeout(timeout)
-            sock.connect(path)
+        sock, token = _transport.open_client(address, timeout)
+        with sock:
+            if token:
+                request["token"] = token
             sock.sendall(json.dumps(request).encode("utf-8"))
             buf = b""
             while True:
@@ -62,10 +63,10 @@ def _send_request(
             return json.loads(buf.decode("utf-8"))
     except (FileNotFoundError, ConnectionRefusedError) as exc:
         raise FaceLockConnectionError(
-            f"FaceLock service is not running (no socket at {path}). "
+            f"FaceLock service is not running (nothing to connect to at {address}). "
             "Install and start the FaceLock Authentication Service first."
         ) from exc
-    except (OSError, ValueError) as exc:
+    except (OSError, ValueError, AttributeError) as exc:
         raise FaceLockConnectionError(f"Could not talk to the FaceLock service: {exc}") from exc
 
 
@@ -75,13 +76,11 @@ def _resolve(user_id: Optional[str]) -> str:
 
 def is_available(socket_path: Optional[str] = None) -> bool:
     """Return True if the FaceLock Authentication Service is reachable."""
-    path = socket_path or DEFAULT_SOCKET_PATH
     try:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
-            sock.settimeout(AVAILABILITY_TIMEOUT)
-            sock.connect(path)
+        sock, _ = _transport.open_client(socket_path or _transport.default_address(), AVAILABILITY_TIMEOUT)
+        sock.close()
         return True
-    except OSError:
+    except (OSError, ValueError, AttributeError):
         return False
 
 
